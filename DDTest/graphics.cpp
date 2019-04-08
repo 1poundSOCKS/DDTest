@@ -1,7 +1,10 @@
 #include "stdafx.h"
 #include "graphics.h"
+#include "world.h"
 
 #pragma comment(lib, "d2d1")
+
+#define SafeRelease(i) if( i ) i->Release()
 
 graphics::Framework* graphics::New()
 {
@@ -44,17 +47,11 @@ graphics::Framework* graphics::GlobalInitialize(HWND wnd)
 
 void graphics::GlobalUninitialize(Framework* f)
 {
-	if (f->greenBrush )
-		f->greenBrush->Release();
-
-	if (f->lightSlateGrayBrush)
-		f->lightSlateGrayBrush->Release();
-
-	if (f->renderTarget)
-		f->renderTarget->Release();
-
-	if (f->factory)
-		f->factory->Release();
+	SafeRelease(f->landBrush);
+	SafeRelease(f->waterBrush);
+	SafeRelease(f->lightSlateGrayBrush);
+	SafeRelease(f->renderTarget);
+	SafeRelease(f->factory);
 }
 
 void graphics::Render(Framework* f, HWND wnd)
@@ -75,17 +72,34 @@ void graphics::Render(Framework* f, HWND wnd)
 	{
 		for (int y = 0; y < height; y += 20)
 		{
+			float xVal = static_cast<float>(x);
+			float yVal = static_cast<float>(y);
+
+			float noise = world::GetNoise(
+				xVal / 20, 
+				yVal / 20);
+
 			D2D1_RECT_F rectangle = D2D1::RectF(
-				static_cast<FLOAT>(x),
-				static_cast<FLOAT>(y),
-				static_cast<FLOAT>(x) + 20,
-				static_cast<FLOAT>(y) + 20
+				xVal,
+				yVal,
+				xVal + 20,
+				yVal + 20
 			);
 
-			f->renderTarget->FillRectangle(
-				&rectangle,
-				f->greenBrush
-			);
+			if (noise >= 0)
+			{
+				f->renderTarget->FillRectangle(
+					&rectangle,
+					f->landBrush
+				);
+			}
+			else
+			{
+				f->renderTarget->FillRectangle(
+					&rectangle,
+					f->waterBrush
+				);
+			}
 		}
 	}
 
@@ -130,11 +144,10 @@ void graphics::Resize(Framework* const f, UINT width, UINT height, HWND wnd)
 
 bool graphics::RecreateRenderTarget(Framework* f, HWND wnd)
 {
-	if (f->lightSlateGrayBrush)
-		f->lightSlateGrayBrush->Release();
-
-	if (f->renderTarget)
-		f->renderTarget->Release();
+	SafeRelease(f->landBrush);
+	SafeRelease(f->waterBrush);
+	SafeRelease(f->lightSlateGrayBrush);
+	SafeRelease(f->renderTarget);
 
 	RECT rc;
 	GetClientRect(wnd, &rc);
@@ -184,7 +197,22 @@ bool graphics::RecreateRenderTarget(Framework* f, HWND wnd)
 
 	if (SUCCEEDED(hr))
 	{
-		f->greenBrush = greenBrush;
+		f->landBrush = greenBrush;
+	}
+	else
+	{
+		return false;
+	}
+
+	ID2D1SolidColorBrush* newBrush;
+	hr = f->renderTarget->CreateSolidColorBrush(
+		D2D1::ColorF(D2D1::ColorF::Blue),
+		&newBrush
+	);
+
+	if (SUCCEEDED(hr))
+	{
+		f->waterBrush = newBrush;
 	}
 	else
 	{

@@ -10,7 +10,8 @@ namespace graphics
 		ID2D1HwndRenderTarget* renderTarget;
 		bool recreateRenderTarget;
 		ID2D1SolidColorBrush* lightSlateGrayBrush;
-		ID2D1SolidColorBrush* greenBrush;
+		ID2D1SolidColorBrush* landBrush;
+		ID2D1SolidColorBrush* waterBrush;
 	};
 
 	Framework* New();
