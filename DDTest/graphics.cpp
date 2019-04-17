@@ -16,6 +16,7 @@ graphics::Framework* graphics::New()
 	::ZeroMemory(f, sizeof(Framework));
 	f->initialized = false;
 	f->recreateRenderTarget = true;
+	f->zoom = 20;
 	return f;
 }
 
@@ -60,68 +61,103 @@ void graphics::Render(Framework* f, HWND wnd)
 		RecreateRenderTarget(f, wnd);
 
 	f->renderTarget->BeginDraw();
-	f->renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-	f->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-	D2D1_SIZE_F rtSize = f->renderTarget->GetSize();
 
-	// Draw a grid background.
+	D2D1_SIZE_F rtSize = f->renderTarget->GetSize();
 	int width = static_cast<int>(rtSize.width);
 	int height = static_cast<int>(rtSize.height);
 
-	for (int x = 0; x < width; x += 20)
-	{
-		for (int y = 0; y < height; y += 20)
-		{
-			float xVal = static_cast<float>(x);
-			float yVal = static_cast<float>(y);
+	//D2D1::Matrix3x2F matrix = D2D1::Matrix3x2F::Rotation(
+	//	f->angle,
+	//	D2D1::Point2F(static_cast<float>(width) / 2, static_cast<float>(height) / 2)
+	//);
 
-			float noise = world::GetNoise(
-				xVal / 20, 
-				yVal / 20);
+	D2D1::Matrix3x2F matrix = D2D1::Matrix3x2F::Scale(
+		D2D1::Size(f->zoom, f->zoom),
+		D2D1::Point2F(0.0f, 0.0f));
+
+	f->renderTarget->SetTransform(matrix);
+	f->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+
+	int scale = 10;
+
+	for (int x = 0; x < width; x += scale)
+	{
+		for (int y = 0; y < height; y += scale)
+		{
+			float xFloat = static_cast<float>(x);
+			float yFloat = static_cast<float>(y);
+
+			int altitude = world::GetAltitude(
+				x / scale,
+				y / scale);
 
 			D2D1_RECT_F rectangle = D2D1::RectF(
-				xVal,
-				yVal,
-				xVal + 20,
-				yVal + 20
+				xFloat,
+				yFloat,
+				xFloat + scale,
+				yFloat + scale
 			);
 
-			if (noise >= 0)
+			if (altitude < -50 )
 			{
-				f->renderTarget->FillRectangle(
-					&rectangle,
-					f->landBrush
+				ID2D1SolidColorBrush* brush;
+				HRESULT hr = f->renderTarget->CreateSolidColorBrush(
+					D2D1::ColorF(D2D1::ColorF(0.0f, 0.0f, 0.5f, 1.0f)),
+					&brush
 				);
+
+				if (SUCCEEDED(hr))
+				{
+					f->renderTarget->FillRectangle(
+						&rectangle,
+						brush
+					);
+
+					SafeRelease(brush);
+				}
 			}
 			else
 			{
-				f->renderTarget->FillRectangle(
-					&rectangle,
-					f->waterBrush
+				float color = static_cast<float>(altitude + 100) / 200;
+
+				ID2D1SolidColorBrush* brush;
+				HRESULT hr = f->renderTarget->CreateSolidColorBrush(
+					D2D1::ColorF(D2D1::ColorF(0.0f, color, 0.0f, 1.0f)),
+					&brush
 				);
+
+				if (SUCCEEDED(hr))
+				{
+					f->renderTarget->FillRectangle(
+						&rectangle,
+						brush
+					);
+
+					SafeRelease(brush);
+				}
 			}
 		}
 	}
 
-	for (int x = 0; x < width; x += 20)
-	{
-		f->renderTarget->DrawLine(
-			D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
-			D2D1::Point2F(static_cast<FLOAT>(x), rtSize.height),
-			f->lightSlateGrayBrush,
-			0.5f
-		);
-	}
+	//for (int x = 0; x < width; x += scale)
+	//{
+	//	f->renderTarget->DrawLine(
+	//		D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
+	//		D2D1::Point2F(static_cast<FLOAT>(x), rtSize.height),
+	//		f->lightSlateGrayBrush,
+	//		0.5f
+	//	);
+	//}
 
-	for (int y = 0; y < height; y += 20)
-	{
-		f->renderTarget->DrawLine(
-			D2D1::Point2F(0.0f, static_cast<FLOAT>(y)),
-			D2D1::Point2F(rtSize.width, static_cast<FLOAT>(y)),
-			f->lightSlateGrayBrush,
-			0.5f
-		);
-	}
+	//for (int y = 0; y < height; y += scale)
+	//{
+	//	f->renderTarget->DrawLine(
+	//		D2D1::Point2F(0.0f, static_cast<FLOAT>(y)),
+	//		D2D1::Point2F(rtSize.width, static_cast<FLOAT>(y)),
+	//		f->lightSlateGrayBrush,
+	//		0.5f
+	//	);
+	//}
 
 	HRESULT hr = f->renderTarget->EndDraw();
 	if (hr == D2DERR_RECREATE_TARGET)
@@ -222,4 +258,27 @@ bool graphics::RecreateRenderTarget(Framework* f, HWND wnd)
 	f->recreateRenderTarget = false;
 
 	return true;
+}
+
+void graphics::RotateAnticlockwise(Framework* f)
+{
+	if (--f->angle < 0)
+		f->angle = 359;
+}
+
+void graphics::RotateClockwise(Framework* f)
+{
+	if (++f->angle > 359)
+		f->angle = 0;
+}
+
+void graphics::ZoomIn(Framework* f)
+{
+	f->zoom+=0.5f;
+}
+
+void graphics::ZoomOut(Framework* f)
+{
+	if (f->zoom -= 0.5f <= 0)
+		f->zoom = 0.5f;
 }

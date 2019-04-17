@@ -12,6 +12,8 @@ namespace graphics
 		ID2D1SolidColorBrush* lightSlateGrayBrush;
 		ID2D1SolidColorBrush* landBrush;
 		ID2D1SolidColorBrush* waterBrush;
+		float angle;
+		float zoom;
 	};
 
 	Framework* New();
@@ -20,4 +22,8 @@ namespace graphics
 	bool RecreateRenderTarget(Framework* f, HWND wnd);
 	void Render(Framework* f, HWND wnd);
 	void Resize(Framework* f, UINT width, UINT height, HWND wnd);
+	void RotateAnticlockwise(Framework* f);
+	void RotateClockwise(Framework* f);
+	void ZoomIn(Framework* f);
+	void ZoomOut(Framework* f);
 }
